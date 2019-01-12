@@ -21,45 +21,61 @@ class ChecklistViewController: UITableViewController, AddItemViewControllerDeleg
         let indexPaths = [indexPath]
         tableView.insertRows(at: indexPaths, with: .automatic)
         navigationController?.popViewController(animated: true)
+        saveChecklistItems()
     }
     
-    var items: [ChecklistItem]
-    
-    required init?(coder aDecoder: NSCoder) {
-        items = [ChecklistItem]()
-        
-        let row0item = ChecklistItem()
-        row0item.text = "walk the dog"
-        row0item.checked = false
-        items.append(row0item)
-        
-        let row1item = ChecklistItem()
-        row1item.text = "brush my teeth"
-        row1item.checked = true
-        items.append(row1item)
-        
-        let row2item = ChecklistItem()
-        row2item.text = "learn iOS development"
-        row2item.checked = true
-        items.append(row2item)
-        
-        let row3item = ChecklistItem()
-        row3item.text = "soccer practice"
-        row3item.checked = false
-        items.append(row3item)
-        
-        let row4item = ChecklistItem()
-        row4item.text = "eat ice cream"
-        row4item.checked = true
-        items.append(row4item)
-        
-        super.init(coder: aDecoder)
+    func addItemViewController(_ controller: AddItemViewController, didFinishEditing item: ChecklistItem) {
+        if let index = items.index(of: item) {
+            let indexPath = IndexPath(row: index, section: 0)
+            if let cell = tableView.cellForRow(at: indexPath) {
+                configureText(for: cell, with: item)
+            }
+        }
+        navigationController?.popViewController(animated: true)
+        saveChecklistItems()
     }
+    
+    var items = [ChecklistItem]()
+    
+//    required init?(coder aDecoder: NSCoder) {
+//        items = [ChecklistItem]()
+//
+//        let row0item = ChecklistItem()
+//        row0item.text = "walk the dog"
+//        row0item.checked = false
+//        items.append(row0item)
+//
+//        let row1item = ChecklistItem()
+//        row1item.text = "brush my teeth"
+//        row1item.checked = true
+//        items.append(row1item)
+//
+//        let row2item = ChecklistItem()
+//        row2item.text = "learn iOS development"
+//        row2item.checked = true
+//        items.append(row2item)
+//
+//        let row3item = ChecklistItem()
+//        row3item.text = "soccer practice"
+//        row3item.checked = false
+//        items.append(row3item)
+//
+//        let row4item = ChecklistItem()
+//        row4item.text = "eat ice cream"
+//        row4item.checked = true
+//        items.append(row4item)
+//
+//        super.init(coder: aDecoder)
+//
+//        print("Documents folder is \(documentsDirectory())")
+//        print("Data file path is \(dataFilePath())")
+//    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
 //        navigationController?.navigationBar.prefersLargeTitles = true
+        loadChecklistItems()
     }
 
     override func didReceiveMemoryWarning() {
@@ -71,6 +87,13 @@ class ChecklistViewController: UITableViewController, AddItemViewControllerDeleg
         if segue.identifier == "AddItem" {
             let controller = segue.destination as! AddItemViewController
             controller.delegate = self
+        } else if segue.identifier == "EditItem" {
+            let controller = segue.destination as! AddItemViewController
+            controller.delegate = self
+            
+            if let indexPath = tableView.indexPath(for: sender as! UITableViewCell){
+                controller.itemToEdit = items[indexPath.row]
+            }
         }
     }
     
@@ -95,19 +118,22 @@ class ChecklistViewController: UITableViewController, AddItemViewControllerDeleg
             configureCheckmark(for: cell, with: item)
         }
         tableView.deselectRow(at: indexPath, animated: true)
+        saveChecklistItems()
     }
     
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         items.remove(at: indexPath.row)
         let indexPaths = [indexPath]
         tableView.deleteRows(at: indexPaths, with: .automatic)
+        saveChecklistItems()
     }
     
     func configureCheckmark(for cell: UITableViewCell, with item: ChecklistItem) {
+        let label = cell.viewWithTag(1001) as! UILabel
         if item.checked {
-            cell.accessoryType = .checkmark
+            label.text = "√"
         } else {
-            cell.accessoryType = .none
+            label.text = " "
         }
     }
     
@@ -130,6 +156,37 @@ class ChecklistViewController: UITableViewController, AddItemViewControllerDeleg
 //    }
 //
     
+    //for saving
+    func documentsDirectory() -> URL {
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        return paths[0]
+    }
+    
+    func dataFilePath() -> URL {
+        return documentsDirectory().appendingPathComponent("Checklists.plist")
+    }
+    
+    func saveChecklistItems() {
+        let encoder = PropertyListEncoder()
+        do {
+            let data = try encoder.encode(items)
+            try data.write(to: dataFilePath(), options: Data.WritingOptions.atomic)
+        } catch {
+            print("Error encoding item array!")
+        }
+    }
+    
+    func loadChecklistItems() {
+        let path = dataFilePath()
+        if let data = try? Data(contentsOf: path) {
+            let decoder = PropertyListDecoder()
+            do {
+                items = try decoder.decode([ChecklistItem].self, from:data)
+            } catch {
+                print("Error decoding item array!")
+            }
+        }
+    }
 
 }
 
